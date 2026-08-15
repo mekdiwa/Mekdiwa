@@ -50,10 +50,11 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
             user_db[member.username.lower().strip()] = (member.id, name)
             user_db[f"@{member.username.lower().strip()}"] = (member.id, name)
 
-        welcome_text = (
-            f"สวัสดีครับคุณ {name} ยินดีต้อนรับเข้าสู่กลุ่มครับ! 🎉\n\n"
-            f"ผมคือ ADMINBOT-BAN บอทผู้ช่วยดูแลกลุ่ม\n"
-            f"ยินดีที่ได้รู้จัก ขอให้พูดคุยกันอย่างสุภาพและทำตามกฎด้วยนะครับ 🛡️"
+                welcome_text = (
+            f"♡ ยินดีต้อนรับเข้าสู่กลุ่มของเรา ♡\n\n"
+            f"ยินดีต้อนรับนะคะ {name} 🎀✨"
+        )
+
         )
         await update.message.reply_text(welcome_text)
 
