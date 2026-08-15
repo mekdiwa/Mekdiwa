@@ -15,9 +15,9 @@ from telegram.ext import (
 TELEGRAM_TOKEN = "8510442078:AAEQxzafOyI-iuV9ZPhLWQBt3C7w7IlHy2g"
 # ==========================================================
 
-# ตัวแปรจำข้อมูลสมาชิก และ คนที่ถูกแบน
-banned_users = {}      # {user_id: name}
-name_to_id = {}        # {name_or_username: user_id}
+# ตารางจำข้อมูล
+banned_users = {}   # {user_id: name}
+user_db = {}        # {username_lower: (user_id, display_name)}
 
 # --- Web Server จำลองรัน 24 ชม. ---
 app = Flask(__name__)
@@ -32,7 +32,7 @@ def run_web():
 Thread(target=run_web).start()
 # ---------------------------------
 
-# เช็กสิทธิ์แอดมิน
+# ตรวจสอบสิทธิ์แอดมิน
 async def is_user_admin(chat_id: int, user_id: int, context: ContextTypes.DEFAULT_TYPE) -> bool:
     try:
         member = await context.bot.get_chat_member(chat_id, user_id)
@@ -40,28 +40,24 @@ async def is_user_admin(chat_id: int, user_id: int, context: ContextTypes.DEFAUL
     except Exception:
         return False
 
-# --- 1. สมาชิกใหม่เข้ากลุ่ม (จำชื่อ + ID ทันที) ---
+# --- 1. ต้อนรับสมาชิกใหม่ + บันทึกข้อมูล ---
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
             continue
         
-        user_name = member.first_name or "สมาชิกใหม่"
-        
-        # บันทึกชื่อเล่นภาษาไทย และ username เข้าสู่ระบบจำชื่อ
-        name_to_id[user_name.lower().strip()] = (member.id, user_name)
+        name = member.first_name or "สมาชิกใหม่"
         if member.username:
-            name_to_id[f"@{member.username.lower()}"] = (member.id, user_name)
-            name_to_id[member.username.lower()] = (member.id, user_name)
+            user_db[member.username.lower()] = (member.id, name)
 
         welcome_text = (
-            f"สวัสดีครับคุณ {user_name} ยินดีต้อนรับเข้าสู่กลุ่มครับ! 🎉\n\n"
+            f"สวัสดีครับคุณ {name} ยินดีต้อนรับเข้าสู่กลุ่มครับ! 🎉\n\n"
             f"ผมคือ ADMINBOT-BAN บอทผู้ช่วยดูแลกลุ่ม\n"
             f"ยินดีที่ได้รู้จัก ขอให้พูดคุยกันอย่างสุภาพและทำตามกฎด้วยนะครับ 🛡️"
         )
         await update.message.reply_text(welcome_text)
 
-# --- 2. ตรวจจับข้อความ, จำชื่อคนพิมพ์, แท็กบอท & กันลิงก์ ---
+# --- 2. ดักจับข้อความ, บันทึกสมาชิก, แท็กบอท & กันลิงก์สแปม ---
 async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     if not message or not message.text:
@@ -73,28 +69,26 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = user.first_name or "สมาชิก"
     bot_username = (await context.bot.get_me()).username
 
-    # บันทึกคนทุกคนที่ส่งข้อความ
-    name_to_id[user_name.lower().strip()] = (user_id, user_name)
+    # บันทึก User ลงฐานข้อมูลเพื่อเวลาโดน @username จะแบนได้ทันที
     if user.username:
-        name_to_id[f"@{user.username.lower()}"] = (user_id, user_name)
-        name_to_id[user.username.lower()] = (user_id, user_name)
+        user_db[user.username.lower()] = (user_id, user_name)
 
-    # แท็กบอทเพื่อดูคู่มือคำสั่ง
+    # แอดมินแท็กบอทเพื่อดูคู่มือ
     if f"@{bot_username}".lower() in message.text.lower():
         if await is_user_admin(chat_id, user_id, context):
-            admin_help_text = (
+            help_text = (
                 "🛡️ **คำสั่งแอดมิน**\n\n"
-                "• `/ban <ชื่อ/ID>` หรือ Reply — แบนสมาชิก\n"
+                "• `/ban @username` หรือ Reply — แบนสมาชิก\n"
                 "• `/unban <ID>` — ปลดแบนสมาชิก\n"
                 "• `/banlist` — ดูรายชื่อคนที่ถูกแบน\n"
                 "• `/open on` — เปิดกลุ่มให้พิมพ์\n"
                 "• `/open off` — ล็อกกลุ่มห้ามพิมพ์\n\n"
                 "*(ระบบกันลิงก์และต้อนรับ ทำงานให้อัตโนมัติ)*"
             )
-            await message.reply_text(admin_help_text, parse_mode="Markdown")
+            await message.reply_text(help_text, parse_mode="Markdown")
             return
 
-    # Anti-Link ลบลิงก์ (ยกเว้นแอดมิน)
+    # Anti-Link ลบข้อความลิงก์อัตโนมัติ (ยกเว้นแอดมิน)
     if not await is_user_admin(chat_id, user_id, context):
         has_link = False
         for entity in message.entities or []:
@@ -114,7 +108,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
-# --- 3. คำสั่ง /ban (รองรับชื่อภาษาไทย, Reply, @username, User ID) ---
+# --- 3. คำสั่ง /ban (พิมพ์ /ban @คนนั้น หรือ Reply) ---
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     sender_id = update.effective_user.id
@@ -127,32 +121,38 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     target_user_id = None
     target_name = ""
 
-    # แบบที่ 1: Reply ข้อความ
+    # วิธี 1: กด Reply ข้อความ
     if message.reply_to_message:
         target_user = message.reply_to_message.from_user
         target_user_id = target_user.id
         target_name = target_user.first_name
 
-    # แบบที่ 2: ดึงจากชื่อที่พิมพ์ตามหลัง เช่น /ban พิมพ์มี่ หรือ /ban @pogare
-    elif context.args:
-        raw_target = " ".join(context.args).strip().lower()
-        
-        # ถ้าพิมพ์เป็นเลข ID
-        if raw_target.isdigit():
-            target_user_id = int(raw_target)
-            target_name = f"ID: {target_user_id}"
-        # ถ้าพิมพ์เป็นชื่อ/username
-        elif raw_target in name_to_id:
-            target_user_id, target_name = name_to_id[raw_target]
-        else:
-            # ค้นหาชื่อแบบใกล้เคียง
-            for k, v in name_to_id.items():
-                if raw_target in k:
-                    target_user_id, target_name = v
-                    break
-
+    # วิธี 2: แท็กชื่อฟ้า (Text Mention)
     if not target_user_id:
-        await message.reply_text("⚠️ หาชื่อไม่พบในระบบ กรุณา **กด Reply ข้อความของคนนั้น** แล้วพิมพ์ `/ban` หรือพิมพ์เลข ID")
+        for entity in message.entities or []:
+            if entity.type == MessageEntity.TEXT_MENTION:
+                target_user_id = entity.user.id
+                target_name = entity.user.first_name
+                break
+
+    # วิธี 3: แท็กด้วย @username
+    if not target_user_id:
+        mentions = re.findall(r'@([a-zA-Z0-9_]+)', message.text)
+        for u in mentions:
+            u_clean = u.lower()
+            if u_clean in user_db:
+                target_user_id, target_name = user_db[u_clean]
+                break
+
+    # วิธี 4: ใส่ตัวเลข User ID
+    if not target_user_id and context.args:
+        if context.args[0].isdigit():
+            target_user_id = int(context.args[0])
+            target_name = f"ID: {target_user_id}"
+
+    # ถ้าหาไม่พบ
+    if not target_user_id:
+        await message.reply_text("⚠️ กรุณาแท็กชื่อคนที่จะแบน เช่น `/ban @username` หรือ Reply ข้อความของคนนั้น")
         return
 
     try:
@@ -160,9 +160,9 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         banned_users[target_user_id] = target_name
         await message.reply_text(f"🚀 แบนคุณ **{target_name}** ออกจากกลุ่มเรียบร้อยแล้ว!", parse_mode="Markdown")
     except Exception as e:
-        await message.reply_text(f"❌ แบนไม่สำเร็จ (ตรวจสอบสิทธิ์แอดมินของบอท)")
+        await message.reply_text(f"❌ แบนไม่สำเร็จ (กรุณาเช็กว่าบอทได้สิทธิ์ Ban Users ในแอดมินกลุ่มแล้วหรือยัง)")
 
-# --- 4. คำสั่ง /unban ---
+# --- 4. คำสั่ง /unban (พิมพ์ /unban ตามด้วยเลขไอดี) ---
 async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     sender_id = update.effective_user.id
@@ -174,13 +174,12 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     numbers = re.findall(r'\d+', message.text)
     if not numbers:
-        await update.message.reply_text("📌 พิมพ์ `/unban <เลข ID>` เช่น `/unban 7285731264`")
+        await update.message.reply_text("📌 พิมพ์ `/unban` ตามด้วยเลข ID เช่น `/unban 7285731264`")
         return
 
     target_user_id = int(numbers[0])
 
     try:
-        # สั่งปลดแบน
         await context.bot.unban_chat_member(chat_id=chat_id, user_id=target_user_id, only_if_banned=False)
         banned_users.pop(target_user_id, None)
         await update.message.reply_text(f"✅ ปลดแบน ID: `{target_user_id}` เรียบร้อยแล้ว สมาชิกสามารถกดลิงก์กลับเข้ากลุ่มได้ครับ", parse_mode="Markdown")
@@ -230,7 +229,7 @@ async def open_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("📌 พิมพ์ `/open on` เพื่อเปิด หรือ `/open off` เพื่อปิด")
     except Exception:
-        await update.message.reply_text("❌ ไม่สามารถตั้งค่ากลุ่มได้")
+        await update.message.reply_text("❌ ไม่สามารถเปลี่ยนสิทธิ์กลุ่มได้")
 
 if __name__ == '__main__':
     bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
