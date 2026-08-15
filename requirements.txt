@@ -1,2 +1,3 @@
-python-telegram-bot[http2]
-httpx
+python-telegram-bot
+flask
+google-generativeai
