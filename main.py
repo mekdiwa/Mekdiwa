@@ -52,7 +52,55 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         await update.message.reply_text(welcome_text)
 
-# --- 2. คำสั่ง /ban ---
+# --- 2. ฟังก์ชันตรวจจับการแท็กบอทเพื่อส่งคู่มือคำสั่งแอดมิน ---
+async def handle_mentions_and_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    if not message or not message.text:
+        return
+
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    bot_username = (await context.bot.get_me()).username
+
+    # ตรวจว่ามีการแท็กบอทหรือไม่ (@username_bot)
+    if f"@{bot_username}".lower() in message.text.lower():
+        # ถ้าเป็นแอดมินแท็ก ส่งคู่มือคำสั่งให้
+        if await is_user_admin(chat_id, user_id, context):
+            admin_help_text = (
+                "🛡️ **คำสั่งแอดมิน (Admin Commands)**\n\n"
+                "• `/ban` หรือ `/ban @ชื่อ` — แบนสมาชิกออกจากกลุ่ม\n"
+                "• `/unban <ID>` — ปลดแบนสมาชิก (ดู ID จาก banlist)\n"
+                "• `/banlist` — ดูรายชื่อและ ID คนที่โดนแบน\n"
+                "• `/open off` — ปิดกลุ่ม (ห้ามสมาชิกพิมพ์)\n"
+                "• `/open on` — เปิดกลุ่ม (ให้สมาชิกพิมพ์ได้ปกติ)\n\n"
+                "*(ระบบลบลิงก์และต้อนรับสมาชิกใหม่ทำงานอัตโนมัติ)*"
+            )
+            await message.reply_text(admin_help_text, parse_mode="Markdown")
+            return
+
+    # ระบบป้องกันลิงก์ (Anti-Link) สำหรับสมาชิกทั่วไป
+    if not await is_user_admin(chat_id, user_id, context):
+        has_link = False
+        for entity in message.entities or []:
+            if entity.type in [MessageEntity.URL, MessageEntity.TEXT_LINK]:
+                has_link = True
+                break
+
+        if not has_link:
+            url_pattern = r"(https?://\S+|t\.me/\S+|www\.\S+)"
+            if re.search(url_pattern, message.text, re.IGNORECASE):
+                has_link = True
+
+        if has_link:
+            try:
+                await message.delete()
+                await message.chat.send_message(
+                    f"⚠️ ไม่อนุญาตให้ส่งลิงก์ในกลุ่มครับคุณ {update.effective_user.first_name}"
+                )
+            except Exception:
+                pass
+
+# --- 3. คำสั่ง /ban ---
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     sender_id = update.effective_user.id
@@ -92,11 +140,10 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await message.reply_text("❌ ไม่สามารถแบนได้ (บอทอาจไม่มีสิทธิ์หรือเป้าหมายเป็นแอดมิน)")
 
-# --- 3. คำสั่ง /unban (ปลดแบน) ---
+# --- 4. คำสั่ง /unban ---
 async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     sender_id = update.effective_user.id
-    message = update.message
 
     if not await is_user_admin(chat_id, sender_id, context):
         await message.reply_text("❌ คุณไม่ใช่แอดมิน ไม่มีสิทธิ์ใช้คำสั่งนี้")
@@ -107,17 +154,17 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target_user_id = int(context.args[0])
 
     if not target_user_id:
-        await message.reply_text("📌 วิธีใช้: พิมพ์ `/unban <User_ID>`")
+        await update.message.reply_text("📌 วิธีใช้: พิมพ์ `/unban <User_ID>`")
         return
 
     try:
         await context.bot.unban_chat_member(chat_id, target_user_id, only_if_banned=True)
         banned_users.pop(target_user_id, None)
-        await message.reply_text(f"✅ ปลดแบน ID: {target_user_id} เรียบร้อยแล้ว สมาชิกสามารถกดลิงก์กลับเข้ากลุ่มได้")
+        await update.message.reply_text(f"✅ ปลดแบน ID: {target_user_id} เรียบร้อยแล้ว")
     except Exception:
-        await message.reply_text("❌ ปลดแบนไม่สำเร็จ กรุณาตรวจสอบ ID อีกครั้ง")
+        await update.message.reply_text("❌ ปลดแบนไม่สำเร็จ กรุณาตรวจสอบ ID อีกครั้ง")
 
-# --- 4. คำสั่ง /banlist (ดูรายชื่อคนที่โดนแบน) ---
+# --- 5. คำสั่ง /banlist ---
 async def banlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     sender_id = update.effective_user.id
@@ -134,7 +181,7 @@ async def banlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text += f"- {uname} (ID: `{uid}`)\n"
     await update.message.reply_text(text, parse_mode="Markdown")
 
-# --- 5. คำสั่ง /open on / off (เปิด/ปิดกลุ่ม) ---
+# --- 6. คำสั่ง /open on / off ---
 async def open_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     sender_id = update.effective_user.id
@@ -144,18 +191,16 @@ async def open_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not context.args or context.args[0].lower() not in ['on', 'off']:
-        await update.message.reply_text("📌 วิธีใช้:\n- `/open on` เพื่อเปิดให้สมาชิกทุกคนพิมพ์แชทได้\n- `/open off` เพื่อปิดแชทกลุ่ม (ห้ามสมาชิกทั่วไปพิมพ์)")
+        await update.message.reply_text("📌 วิธีใช้:\n- `/open on` เพื่อเปิดกลุ่ม\n- `/open off` เพื่อปิดกลุ่ม")
         return
 
     action = context.args[0].lower()
     try:
         if action == 'off':
-            # ปิดการส่งข้อความทั้งหมด
             perms = ChatPermissions(can_send_messages=False)
             await context.bot.set_chat_permissions(chat_id, perms)
-            await update.message.reply_text("🔒 **ปิดกลุ่มเรียบร้อย:** สมาชิกทั่วไปไม่สามารถส่งข้อความได้ชั่วคราว", parse_mode="Markdown")
+            await update.message.reply_text("🔒 **ปิดกลุ่มเรียบร้อย:** สมาชิกทั่วไปไม่สามารถส่งข้อความได้", parse_mode="Markdown")
         else:
-            # เปิดให้ส่งข้อความตามปกติ
             perms = ChatPermissions(
                 can_send_messages=True,
                 can_send_photos=True,
@@ -164,43 +209,9 @@ async def open_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 can_add_web_page_previews=True
             )
             await context.bot.set_chat_permissions(chat_id, perms)
-            await update.message.reply_text("🔓 **เปิดกลุ่มเรียบร้อย:** สมาชิกทุกคนสามารถพิมพ์แชทได้ตามปกติ", parse_mode="Markdown")
+            await update.message.reply_text("🔓 **เปิดกลุ่มเรียบร้อย:** สมาชิกทุกคนสามารถพิมพ์ได้ตามปกติ", parse_mode="Markdown")
     except Exception:
         await update.message.reply_text("❌ ไม่สามารถเปลี่ยนสิทธิ์กลุ่มได้ (กรุณาให้สิทธิ์ Change Group Info แก่บอท)")
-
-# --- 6. ระบบป้องกันลิงก์ (Anti-Link) ---
-async def anti_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.message
-    if not message or not message.text:
-        return
-
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-
-    # ข้ามถ้าคนส่งเป็นแอดมิน
-    if await is_user_admin(chat_id, user_id, context):
-        return
-
-    # ตรวจจับลิงก์เว็บและลิงก์ Telegram
-    has_link = False
-    for entity in message.entities or []:
-        if entity.type in [MessageEntity.URL, MessageEntity.TEXT_LINK]:
-            has_link = True
-            break
-
-    if not has_link:
-        url_pattern = r"(https?://\S+|t\.me/\S+|www\.\S+)"
-        if re.search(url_pattern, message.text, re.IGNORECASE):
-            has_link = True
-
-    if has_link:
-        try:
-            await message.delete()
-            warning_msg = await message.chat.send_message(
-                f"⚠️ ไม่อนุญาตให้ส่งลิงก์ในกลุ่มครับคุณ {update.effective_user.first_name}"
-            )
-        except Exception:
-            pass
 
 if __name__ == '__main__':
     bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
@@ -208,13 +219,13 @@ if __name__ == '__main__':
     # ต้อนรับสมาชิกใหม่
     bot_app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
 
-    # คำสั่งจัดการระบบ
+    # คำสั่งแอดมิน
     bot_app.add_handler(CommandHandler("ban", ban))
     bot_app.add_handler(CommandHandler("unban", unban))
     bot_app.add_handler(CommandHandler("banlist", banlist))
     bot_app.add_handler(CommandHandler("open", open_group))
 
-    # ดักจับลิงก์ข้อความทั่วไป
-    bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, anti_link))
+    # ดักจับการแท็กบอท + กันลิงก์สแปม
+    bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_mentions_and_links))
 
     bot_app.run_polling()
