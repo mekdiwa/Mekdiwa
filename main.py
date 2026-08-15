@@ -307,7 +307,7 @@ def main():
     keep_alive()  # เปิด Port สำหรับ Render
     
     # 🔴 นำ Token ที่ได้จาก @BotFather มาใส่ตรงนี้
-    BOT_TOKEN = "8510442078:AAEQxzafOyI-iuV9ZPhLWQBt3C7w7IlHy2g"
+    BOT_TOKEN = "8510442078:AAEuWv8BiGC_skVYM5xDYvlGhdH9RwyBg3c"
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
