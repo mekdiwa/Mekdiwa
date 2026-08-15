@@ -7,8 +7,8 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ================= 1. ใส่ KEY ตรงนี้ =================
-TELEGRAM_TOKEN = "ใส่_TELEGRAM_BOT_TOKEN_ที่นี่"
-GEMINI_API_KEY = "ใส่_GEMINI_API_KEY_ที่นี่"
+TELEGRAM_TOKEN = "8510442078:AAFYfCBK6kT4mASprz_4836FecLq43l3P0E"
+GEMINI_API_KEY = "AQ.Ab8RN6IyFZ0LZNhCl2ya0JNqHVf6M8AzLBubjimVpKZmRXlPGQ"
 # ===================================================
 
 # --- โค้ด Web Server จำลอง (กันหลับ 24 ชม.) ---
