@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
 # ================= 1. ใส่ KEY ตรงนี้ =================
-TELEGRAM_TOKEN = "8510442078:AAFYfCBK6kT4mASprz_4836FecLq43l3P0E"
+TELEGRAM_TOKEN = "8510442078:AAEQxzafOyI-iuV9ZPhLWQBt3C7w7IlHy2g"
 GEMINI_API_KEY = "AQ.Ab8RN6IyFZ0LZNhCl2ya0JNqHVf6M8AzLBubjimVpKZmRXlPGQ"
 # ===================================================
 
