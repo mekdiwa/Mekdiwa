@@ -35,19 +35,16 @@ DB_NAME = "group_bot.db"
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    # ตารางเก็บสมาชิกที่ถูกแบน
     c.execute('''CREATE TABLE IF NOT EXISTS banned_users (
                     chat_id INTEGER,
                     user_id INTEGER,
                     user_tag TEXT,
                     PRIMARY KEY (chat_id, user_id)
                 )''')
-    # ตารางจำ username กับ user_id
     c.execute('''CREATE TABLE IF NOT EXISTS user_cache (
                     username TEXT PRIMARY KEY,
                     user_id INTEGER
                 )''')
-    # ตารางเก็บสถานะ (antilink และ group_open)
     c.execute('''CREATE TABLE IF NOT EXISTS settings (
                     chat_id INTEGER PRIMARY KEY,
                     antilink INTEGER DEFAULT 0,
@@ -136,27 +133,27 @@ async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
         return False
 
 # ================= ข้อความคู่มือการใช้งาน =================
-HELP_TEXT = """📖 **คู่มือคำสั่งการใช้งานบอท:**
+HELP_TEXT = """📖 คู่มือคำสั่งการใช้งานบอท:
 
-🔒 **ระบบเปิด/ปิดแชตในกลุ่ม:**
-• `/open on` — เปิดกลุ่ม ให้สมาชิกทุกคนพิมพ์คุยได้
-• `/open off` — ปิดกลุ่ม สมาชิกทั่วไปจะพิมพ์ไม่ได้ (แอดมินพิมพ์ได้ปกติ)
+🔒 ระบบเปิด/ปิดแชตในกลุ่ม:
+• /open on — เปิดกลุ่ม ให้สมาชิกทุกคนพิมพ์คุยได้
+• /open off — ปิดกลุ่ม สมาชิกทั่วไปจะพิมพ์ไม่ได้ (แอดมินพิมพ์ได้ปกติ)
 
-🛡️ **ระบบป้องกันลิงก์:**
-• `/antilink on` — เปิดระบบลบข้อความที่มีลิงก์อัตโนมัติ
-• `/antilink off` — ปิดระบบป้องกันลิงก์
+🛡️ ระบบป้องกันลิงก์:
+• /antilink on — เปิดระบบลบข้อความที่มีลิงก์อัตโนมัติ
+• /antilink off — ปิดระบบป้องกันลิงก์
 
-🚫 **ระบบแบนสมาชิก (เข้ากลุ่มผ่านลิงก์ไม่ได้อีก):**
-• `/ban @username` — สั่งแบนด้วยการแท็กชื่อ
-• `/ban <User_ID>` — สั่งแบนด้วย User ID
-• *หรือ Reply ข้อความของคนที่ต้องการ แล้วพิมพ์ `/ban`*
+🚫 ระบบแบนสมาชิก (เข้ากลุ่มผ่านลิงก์ไม่ได้อีก):
+• /ban @username — สั่งแบนด้วยการแท็กชื่อ
+• /ban <User_ID> — สั่งแบนด้วย User ID
+• หรือ Reply ข้อความของคนที่ต้องการ แล้วพิมพ์ /ban
 
-✅ **ระบบปลดแบน:**
-• `/unban @username` — ปลดแบนด้วยชื่อ
-• `/unban <User_ID>` — ปลดแบนด้วย User ID
+✅ ระบบปลดแบน:
+• /unban @username — ปลดแบนด้วยชื่อ
+• /unban <User_ID> — ปลดแบนด้วย User ID
 
-📋 **ดูรายชื่อคนโดนแบน:**
-• `/banlist` — แสดงรายชื่อผู้ถูกแบนทั้งหมดในกลุ่ม"""
+📋 ดูรายชื่อคนโดนแบน:
+• /banlist — แสดงรายชื่อผู้ถูกแบนทั้งหมดในกลุ่ม"""
 
 # ================= 4. คำสั่งจัดการเปิด/ปิดแชตกลุ่ม =================
 async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,7 +162,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
     if not context.args or context.args[0].lower() not in ["on", "off"]:
-        await update.message.reply_text("⚠️ กรุณาระบุคำสั่ง:\n• `/open on` = เปิดกลุ่มให้ทุกคนพิมพ์คุยได้\n• `/open off` = ปิดกลุ่ม สมาชิกทั่วไปจะพิมพ์ไม่ได้", parse_mode="Markdown")
+        await update.message.reply_text("⚠️ กรุณาระบุคำสั่ง:\n• /open on = เปิดกลุ่มให้ทุกคนพิมพ์คุยได้\n• /open off = ปิดกลุ่ม สมาชิกทั่วไปจะพิมพ์ไม่ได้")
         return
 
     mode = context.args[0].lower()
@@ -191,7 +188,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
         set_setting(chat_id, "group_open", 0)
-        await update.message.reply_text("🔒 **ปิดกลุ่มเรียบร้อยแล้ว**\nสมาชิกทั่วไปจะไม่สามารถส่งข้อความได้ (แอดมินส่งได้ปกติ)", parse_mode="Markdown")
+        await update.message.reply_text("🔒 ปิดกลุ่มเรียบร้อยแล้ว\nสมาชิกทั่วไปจะไม่สามารถส่งข้อความได้ (แอดมินส่งได้ปกติ)")
 
     elif mode == "on":
         permissions = ChatPermissions(
@@ -212,7 +209,7 @@ async def open_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
         set_setting(chat_id, "group_open", 1)
-        await update.message.reply_text("🔓 **เปิดกลุ่มเรียบร้อยแล้ว**\nสมาชิกทุกคนสามารถพิมพ์สนทนาได้ตามปกติ", parse_mode="Markdown")
+        await update.message.reply_text("🔓 เปิดกลุ่มเรียบร้อยแล้ว\nสมาชิกทุกคนสามารถพิมพ์สนทนาได้ตามปกติ")
 
 # ================= 5. คำสั่งระบบป้องกันลิงก์ =================
 async def antilink_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -221,16 +218,16 @@ async def antilink_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = update.effective_chat.id
     if not context.args or context.args[0].lower() not in ["on", "off"]:
-        await update.message.reply_text("⚠️ กรุณาระบุคำสั่ง:\n• `/antilink on` = เปิดระบบลบข้อความที่มีลิงก์\n• `/antilink off` = ปิดระบบกันลิงก์", parse_mode="Markdown")
+        await update.message.reply_text("⚠️ กรุณาระบุคำสั่ง:\n• /antilink on = เปิดระบบลบข้อความที่มีลิงก์\n• /antilink off = ปิดระบบกันลิงก์")
         return
 
     mode = context.args[0].lower()
     if mode == "on":
         set_setting(chat_id, "antilink", 1)
-        await update.message.reply_text("🛡️ **เปิดระบบป้องกันลิงก์แล้ว**\nข้อความที่มีลิงก์จากสมาชิกทั่วไปจะถูกลบทันที", parse_mode="Markdown")
+        await update.message.reply_text("🛡️ เปิดระบบป้องกันลิงก์แล้ว\nข้อความที่มีลิงก์จากสมาชิกทั่วไปจะถูกลบทันที")
     else:
         set_setting(chat_id, "antilink", 0)
-        await update.message.reply_text("🔓 **ปิดระบบป้องกันลิงก์แล้ว**", parse_mode="Markdown")
+        await update.message.reply_text("🔓 ปิดระบบป้องกันลิงก์แล้ว")
 
 # ================= 6. คำสั่งแบน / ปลดแบน / Banlist =================
 async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -260,14 +257,14 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     target_id = cached_id
                     target_tag = arg
                 else:
-                    await update.message.reply_text(f"⚠️ บอทยังไม่เคยเห็น {arg} ในกลุ่ม กรุณา Reply ข้อความของเขาเพื่อแบน", parse_mode="Markdown")
+                    await update.message.reply_text(f"⚠️ บอทยังไม่เคยเห็น {arg} ในกลุ่ม กรุณา Reply ข้อความของเขาเพื่อแบน")
                     return
             elif arg.isdigit():
                 target_id = int(arg)
-                target_tag = f"ID: `{target_id}`"
+                target_tag = f"ID: {target_id}"
 
     if not target_id:
-        await update.message.reply_text("⚠️ กรุณาระบุชื่อ เช่น `/ban @username` หรือ Reply ข้อความคนที่ต้องการแบน", parse_mode="Markdown")
+        await update.message.reply_text("⚠️ กรุณาระบุชื่อ เช่น /ban @username หรือ Reply ข้อความคนที่ต้องการแบน")
         return
 
     try:
@@ -277,13 +274,14 @@ async def ban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ ไม่สามารถแบนได้: {e}")
 
+# คำสั่ง /unban (แก้ไขการส่งข้อความธรรมดา ป้องกัน Entity Parse Error)
 async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, context):
         return
 
     chat_id = update.effective_chat.id
     if not context.args:
-        await update.message.reply_text("⚠️ กรุณาระบุ เช่น `/unban @username` หรือ `/unban 123456789`", parse_mode="Markdown")
+        await update.message.reply_text("⚠️ กรุณาระบุ เช่น /unban @username หรือ /unban 123456789")
         return
 
     arg = context.args[0]
@@ -300,7 +298,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target_id = int(arg)
 
     if not target_id:
-        await update.message.reply_text("⚠️ ไม่พบผู้ใช้นี้ในระบบ กรุณาใช้คำสั่ง `/banlist` เพื่อดู ID แล้วปลดแบนด้วย ID แทน", parse_mode="Markdown")
+        await update.message.reply_text("⚠️ ไม่พบผู้ใช้นี้ในระบบ กรุณาใช้คำสั่ง /banlist เพื่อดู ID แล้วปลดแบนด้วย ID แทน")
         return
 
     try:
@@ -309,7 +307,7 @@ async def unban_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
         remove_ban(chat_id, target_id)
-        await update.message.reply_text(f"✅ ปลดแบนผู้ใช้ {arg} (ID: `{target_id}`) เรียบร้อยแล้ว สามารถกดเข้ากลุ่มได้ตามปกติ", parse_mode="Markdown")
+        await update.message.reply_text(f"✅ ปลดแบนผู้ใช้ {arg} (ID: {target_id}) เรียบร้อยแล้ว สามารถกดเข้ากลุ่มได้ตามปกติ")
     except Exception as e:
         await update.message.reply_text(f"❌ ไม่สามารถปลดแบนได้: {e}")
 
@@ -324,14 +322,14 @@ async def banlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📋 ไม่มีรายชื่อผู้ถูกแบนในกลุ่มนี้")
         return
 
-    msg = "📋 **รายชื่อผู้ถูกแบนทั้งหมด:**\n\n"
+    msg = "📋 รายชื่อผู้ถูกแบนทั้งหมด:\n\n"
     for idx, (uid, tag) in enumerate(banned_list, 1):
-        msg += f"{idx}. {tag} — (ID: `{uid}`)\n"
+        msg += f"{idx}. {tag} — (ID: {uid})\n"
 
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await update.message.reply_text(msg)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(HELP_TEXT, parse_mode="Markdown")
+    await update.message.reply_text(HELP_TEXT)
 
 # ================= 7. ตรวจจับข้อความ, แท็กบอท, ลบข้อความตอนปิดกลุ่ม, และดักลิงก์ =================
 LINK_REGEX = re.compile(r'(https?://\S+|www\.\S+|t\.me/\S+)', re.IGNORECASE)
@@ -347,7 +345,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user.username:
         cache_user(user.username, user.id)
 
-    # 1. ตรวจสอบว่ามีการ "แท็กชื่อบอท" หรือไม่ -> ถ้าแท็กให้ตอบคู่มือการใช้งาน
+    # 1. แท็กชื่อบอท -> ตอบคู่มือ
     bot_username = context.bot.username
     if bot_username:
         is_bot_tagged = False
@@ -362,12 +360,11 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         break
         
         if is_bot_tagged:
-            await update.message.reply_text(HELP_TEXT, parse_mode="Markdown")
+            await update.message.reply_text(HELP_TEXT)
             return
 
-    # 2. ตรวจสอบสิทธิ์ถ้าไม่ใช่แอดมิน
+    # 2. ตรวจสอบถ้าไม่ใช่แอดมิน
     if not await is_admin(update, context):
-        # 2.1 เช็กระบบปิดกลุ่ม (ถ้าปิดกลุ่มอยู่ ให้ลบข้อความทันที)
         if get_setting(chat_id, "group_open", default=1) == 0:
             try:
                 await update.message.delete()
@@ -375,7 +372,6 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
-        # 2.2 เช็กระบบป้องกันลิงก์
         if get_setting(chat_id, "antilink", default=0) == 1:
             has_link = bool(LINK_REGEX.search(text))
             if not has_link and update.message.entities:
@@ -415,14 +411,13 @@ async def greet_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ================= 9. เริ่มต้นการทำงาน =================
 def main():
     init_db()
-    keep_alive()  # รัน Web Server หลอก Render
+    keep_alive()
     
-    # 🔴 นำ Token ที่ได้จาก @BotFather มาวางตรงนี้
+    # 🔴 ใส่ Token ของคุณตรงนี้
     BOT_TOKEN = "8510442078:AAEuWv8BiGC_skVYM5xDYvlGhdH9RwyBg3c"
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # ลงทะเบียนคำสั่ง
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("start", help_command))
     app.add_handler(CommandHandler("open", open_command))
@@ -431,7 +426,6 @@ def main():
     app.add_handler(CommandHandler("unban", unban_command))
     app.add_handler(CommandHandler("banlist", banlist_command))
 
-    # Event ดักจับ
     app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, greet_new_member))
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handle_messages))
 
